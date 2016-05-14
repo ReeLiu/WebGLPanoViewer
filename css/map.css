@@ -1,0 +1,98 @@
+@charset "utf-8";
+div.logo{
+	background:url(../texture/sh_logo.gif); 
+	left:20px;
+	top:20px;
+	width:120px;
+	height:80px;
+	background-repeat:no-repeat;
+	background-size:cover;
+	position:absolute;
+	border-radius:9px;
+	opacity:0.6;
+	}
+div.map{
+	right:20px; 
+	top:10px; 
+	width:480px;
+	height:200px;
+	}
+div.button{
+	width:380px;
+	height:60px;
+	}		
+div.groundMap{			
+    width:380px;
+    height:400px;
+    border:0px;
+	position:relative;
+	}
+	
+div.window{			
+    width:380px;
+    height:280px;
+    border:0px;
+	position:relative;
+	}
+	
+img#secondButton{
+	float:right; 
+	width:120px; 
+	height:80px;
+	opacity:0.80;
+	}
+img#groundButton{			
+	position:relative;
+	float:right; 
+	width:120px; 
+	height:60px;
+	opacity:.70;
+	}
+/*img#bookmarkButton{
+	float:right; 
+	width:120px; 
+	height:60px;
+	}*/
+
+	
+/*Terms of edit button*/
+img#editButton{
+	float:left; 
+	width:120px; 
+	height:60px;
+	}
+div.editPopUp{
+	top:0px;
+	width:120px;
+	height:240px;
+	opacity: .95;
+    -moz-opacity:.95;
+	filter:alpha(opacity=95);
+	}
+
+/*house map*/
+img#firstFloor{
+	/*position:relative;*/
+	top:0px;
+	width:480px;
+	height:280px;
+	opacity: .95;
+    -moz-opacity:.95;
+	display:none;
+	filter:alpha(opacity=95);
+	border-radius:9px;
+	border:20px;
+	border-color:blue;
+	}
+img#groundFloor{
+	/*position:relative;*/
+	top:0px;
+	width:380px;
+	height:400px;
+	opacity: .95;
+    -moz-opacity:.95;
+	display:none;
+	filter:alpha(opacity=95);
+	}
+/* CSS Document */
+

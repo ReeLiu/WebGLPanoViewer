@@ -1,0 +1,53 @@
+@charset "utf-8";
+/* CSS Document */
+/* Khaled_popUp */
+#kcontainer {
+	width: 450px;
+	height: 390px;
+	border: thin solid #333;
+	position:relative;
+    display:block;
+	left:50%;
+	margin-left:-250px;
+	top:50%;
+	margin-top:190px;
+	z-index:5;
+	background:#FFF;
+	display:none;
+}
+
+#kcontainer h1{
+	margin: 0;
+	font-family: "Myriad Pro", "Myriad Pro Cond", "Myriad Pro Light";
+	color: #000;
+	border-bottom-width: thin;
+	border-bottom-style: solid;
+	border-bottom-color: #930;
+	font-size: 20px;
+	background-color: #CCC;
+	height: 30px;
+	padding-left: 10px;
+	padding-top: 5px;
+}
+
+#kcontainer #kformelemnts {
+	margin: 0;
+	padding: 20px;
+	list-style: none;
+}
+#kcontainer #kformelemnts li {
+	padding: 0;
+	margin-bottom: 10px;
+	padding-bottom: 10px;
+	display: block;
+
+}
+#kcontainer #kformelemnts li span{
+	width: 80px;
+	display: block;
+	float: left;
+	font-family: "Myriad Pro", "Myriad Pro Cond", "Myriad Pro Light";
+	font-size: 14px;
+	color: #000;
+}
+
