@@ -36,8 +36,7 @@
         uniform sampler2D tex_fusing_weight;
 
         void main() {
-
-        if (refocus == 1){
+       if (refocus == 1){
         const float MAX_D = 70.0;
         const float eps = 1e-5;
         float w = float(w_img);
@@ -158,10 +157,10 @@
         }
 
         else
-        {
+       {
             vec4 sample = texture2D(tex_img, vUV);
             gl_FragColor = vec4(sample.xyz, sample.w);
-        }
+       }
     }
 
     </script>

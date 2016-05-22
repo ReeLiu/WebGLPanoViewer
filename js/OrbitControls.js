@@ -25,7 +25,7 @@ THREE.OrbitControls = function ( object, domElement, refocusFlag ) {
 
 	this.object = object;
 	this.domElement = ( domElement !== undefined ) ? domElement : document;
-    
+
 	this.refocusFlag = refocusFlag;
 
 	// API
@@ -135,7 +135,7 @@ THREE.OrbitControls = function ( object, domElement, refocusFlag ) {
 		// get X column of matrix
 		panOffset.set( te[0], te[1], te[2] );
 		panOffset.multiplyScalar(-distance);
-		
+
 		pan.add( panOffset );
 
 	};
@@ -148,10 +148,10 @@ THREE.OrbitControls = function ( object, domElement, refocusFlag ) {
 		// get Y column of matrix
 		panOffset.set( te[4], te[5], te[6] );
 		panOffset.multiplyScalar(distance);
-		
+
 		pan.add( panOffset );
 	};
-	
+
 	// main entry point; pass in Vector2 of change desired in pixel space,
 	// right and down are positive
 	this.pan = function ( delta ) {
@@ -242,7 +242,7 @@ THREE.OrbitControls = function ( object, domElement, refocusFlag ) {
 
 		// restrict radius to be between desired limits
 		radius = Math.max( this.minDistance, Math.min( this.maxDistance, radius ) );
-		
+
 		// move target to panned location
 		this.target.add( pan );
 
@@ -261,10 +261,11 @@ THREE.OrbitControls = function ( object, domElement, refocusFlag ) {
 
 		if ( lastPosition.distanceTo( this.object.position ) > 0 ) {
 
+		    window.update_flag = true;
+
 			this.dispatchEvent( changeEvent );
 
 			lastPosition.copy( this.object.position );
-
 		}
 
 	};
@@ -363,7 +364,7 @@ THREE.OrbitControls = function ( object, domElement, refocusFlag ) {
 
 			panEnd.set( event.clientX, event.clientY );
 			panDelta.subVectors( panEnd, panStart );
-			
+
 			scope.pan( panDelta );
 
 			panStart.copy( panEnd );
@@ -424,7 +425,7 @@ THREE.OrbitControls = function ( object, domElement, refocusFlag ) {
 		// pan a pixel - I guess for precise positioning?
 		// Greggman fix: https://github.com/greggman/three.js/commit/fde9f9917d6d8381f06bf22cdff766029d1761be
 		var needUpdate = false;
-		
+
 		switch ( event.keyCode ) {
 
 			case scope.keys.UP:
@@ -443,9 +444,6 @@ THREE.OrbitControls = function ( object, domElement, refocusFlag ) {
 				scope.pan( new THREE.Vector2( -scope.keyPanSpeed, 0 ) );
 				needUpdate = true;
 				break;
-
-		    case scope.keys.REFOCUSFAR:
-                
 		}
 
 		// Greggman fix: https://github.com/greggman/three.js/commit/fde9f9917d6d8381f06bf22cdff766029d1761be
@@ -454,7 +452,7 @@ THREE.OrbitControls = function ( object, domElement, refocusFlag ) {
 		}
 
 	}
-	
+
 	function touchstart( event ) {
 
 		if ( scope.enabled === false ) { return; }
@@ -550,7 +548,7 @@ THREE.OrbitControls = function ( object, domElement, refocusFlag ) {
 
 				panEnd.set( event.touches[ 0 ].pageX, event.touches[ 0 ].pageY );
 				panDelta.subVectors( panEnd, panStart );
-				
+
 				scope.pan( panDelta );
 
 				panStart.copy( panEnd );

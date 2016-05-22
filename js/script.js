@@ -1,8 +1,8 @@
-/**
+﻿/**
  *
  * Copyright 2016, Script
  * by Wangjinlei@shanghaitech.edu.cn
- * 
+ *
  */
 
 
@@ -24,11 +24,12 @@ var uni_R_kernel = 5;
 var uni_h_img = 700;
 var uni_w_img = 500;
 
-var uni_fusing_weight;
+var texture_ready_flag = false;
 
-var uni_refocus_flag = 1;
+var uni_refocus_flag = 0;
+var update_flag = false;
 
-var delta_d_focal = 0;
+var depth_data;
 
 var house = {
     scene: null,
@@ -40,7 +41,7 @@ var house = {
 	skyMaterial: null,
 	skyBox: null,
 	planeMesh: null,
-	
+
     // Initialization
 	init: function ()
 	{
@@ -60,31 +61,31 @@ var house = {
             //clearColor: 0x000000,
             //clearAlpha: 0,
             alpha: true,
+            preserveDrawingBuffer: true,
         } );
         this.renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
         this.renderer.setClearColor(0xffffff);
 
         this.renderer.shadowMapEnabled = true;
         this.renderer.shadowMapSoft = true;
-		
+
         // prepare container
         this.container = document.createElement('div');
 		this.container.id = "panorama";
 		this.container.style.top = "0px";
 		this.container.style.zindex = 1;
-		this.container.setAttribute("onclick","addClickEvent()");
+		this.container.setAttribute("onclick","addClickEvent(event)");
         document.body.appendChild(this.container);
         this.container.appendChild(this.renderer.domElement);
-		
+
 		var parentEle = document.getElementById('panoramaDiv');
 		parentEle.appendChild(this.container);
-
 
         // events
         THREEx.WindowResize(this.renderer, this.camera);
 
         // prepare controls (OrbitControls)
-        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement); 
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.target = new THREE.Vector3(0, 0, 0);
         this.controls.maxDistance = 700;
 
@@ -97,7 +98,7 @@ var house = {
         var spLight = new THREE.PointLight(0xffffff, 1.75, 1000);
         spLight.position.set(-100, 200, 200);
         this.scene.add(spLight);
-							  
+
         this.drawSphericalSkybox(config);
 
     },
@@ -106,27 +107,57 @@ var house = {
     {
         // Load shader materials
         // Load texture image
-        uni_img = THREE.ImageUtils.loadTexture(panoConfig.path_img, undefined, this.onLoadTexture_img);
-        uni_img.wrapS = THREE.ClampToEdgeWrapping;
-        uni_img.wrapT = THREE.ClampToEdgeWrapping;
-        uni_img.minFilter = THREE.LinearFilter;
-        uni_img.magFilter = THREE.LinearFilter;
+        var loader = new THREE.TextureLoader();
 
-        uni_disp = THREE.ImageUtils.loadTexture(panoConfig.path_disp, undefined);
-        uni_disp.wrapS = THREE.ClampToEdgeWrapping;
-        uni_disp.wrapT = THREE.ClampToEdgeWrapping;
-        uni_disp.minFilter = THREE.LinearFilter;
-        uni_disp.magFilter = THREE.LinearFilter;
 
-        uni_kernel = THREE.ImageUtils.loadTexture(panoConfig.path_kernel, undefined, this.onLoadTexture_kernel);
+        loader.load(panoConfig.path_disp, function(texture){
+          uni_disp = texture;
 
-        uni_kernel.wrapS = THREE.ClampToEdgeWrapping;
-        uni_kernel.wrapT = THREE.ClampToEdgeWrapping;
-        uni_kernel.minFilter = THREE.LinearFilter;
-        uni_kernel.magFilter = THREE.LinearFilter;
+          depth_data = getImageData(texture.image);
+        });
 
-        uni_R_kernel = ( uni_kernel.image.width - 1 ) / 2;
-        uni_R_kernel *= panoConfig.scale_kernel;
+        loader.load(panoConfig.path_kernel, function(texture){
+          uni_kernel = texture;
+          uni_R_kernel = (texture.image.width -1)/2 * panoConfig.scale_kernel;
+        });
+
+        loader.load(panoConfig.path_img, function(texture){
+          uni_img = texture;
+          uni_w_img = texture.image.width;
+          uni_h_img = texture.image.height;
+
+          // prepare ShaderMaterial
+          var uniforms = {
+              d_focal: { type: "f", value: uni_d_focal },
+              R_kernel: { type: "f", value: uni_R_kernel },
+              h_img: { type: "i", value: uni_h_img },
+              w_img: { type: "i", value: uni_w_img },
+              tex_img: { type: "t", value: uni_img },
+              tex_disp: { type: "t", value: uni_disp },
+              tex_kernel: { type: "t", value: uni_kernel },
+              tex_fusing_weight: { type: "t", value: uni_fusing_weight },
+              refocus: { type: "i", value: uni_refocus_flag },
+          };
+
+          var skyMaterial = new THREE.ShaderMaterial( {
+              uniforms: uniforms,
+              vertexShader: document.getElementById('sky-vertex').textContent,
+              fragmentShader: document.getElementById('sky-fragment').textContent
+          });
+
+          // create Mesh with sphere geometry and add to the scene
+          house.skyBox = new THREE.Mesh(new THREE.SphereGeometry(250, 60, 40), skyMaterial);
+          house.skyBox.material.side = THREE.DoubleSide;
+          house.skyBox.scale.set(-1, 1, 1);
+          house.skyBox.eulerOrder = 'XZY';
+          house.skyBox.renderDepth = 500.0;
+
+          house.scene.add(house.skyBox);
+          house.skyBox.material.needsUpdate = true;
+
+          uni_refocus_flag = true;
+          texture_ready_flag = true;
+        });
 
         // buf -> for what?
         buf = new Uint8Array( 4 * 256 );
@@ -139,69 +170,24 @@ var house = {
             buf[4 * i + 3] = buf[4 * i];
         }
 
-        uni_fusing_weight = new THREE.DataTexture( buf, 256, 1, THREE.RGBAFormat, THREE.UnsignedByteType );
+        var uni_fusing_weight = new THREE.DataTexture( buf, 256, 1, THREE.RGBAFormat, THREE.UnsignedByteType );
         //uni_fusing_weight= THREE.ImageUtils.generateDataTexture (256, 1,  new THREE.Color(0xffffffff));
         uni_fusing_weight.wrapS = THREE.ClampToEdgeWrapping;
         uni_fusing_weight.wrapT = THREE.ClampToEdgeWrapping;
         uni_fusing_weight.minFilter = THREE.NearestFilter;
         uni_fusing_weight.magFilter = THREE.NearestFilter;
         uni_fusing_weight.needsUpdate = true;
-
-		// prepare ShaderMaterial
-        var uniforms = {
-            d_focal: { type: "f", value: uni_d_focal },
-            R_kernel: { type: "f", value: uni_R_kernel },
-            h_img: { type: "i", value: uni_h_img },
-            w_img: { type: "i", value: uni_w_img },
-            tex_img: { type: "t", value: uni_img },
-            tex_disp: { type: "t", value: uni_disp },
-            tex_kernel: { type: "t", value: uni_kernel },
-            tex_fusing_weight: { type: "t", value: uni_fusing_weight },
-            refocus: { type: "i", value: uni_refocus_flag },
-        }; 
-
-        skyMaterial = new THREE.ShaderMaterial( {
-            uniforms: uniforms,
-            vertexShader: document.getElementById('sky-vertex').textContent, 
-			fragmentShader: document.getElementById('sky-fragment').textContent
-        });
-		
-        // create Mesh with sphere geometry and add to the scene
-        this.skyBox = new THREE.Mesh(new THREE.SphereGeometry(250, 60, 40), skyMaterial);
-		this.skyBox.material.side = THREE.DoubleSide;
-        this.skyBox.scale.set(-1, 1, 1);
-        this.skyBox.eulerOrder = 'XZY';
-        this.skyBox.renderDepth = 500.0;
-
-        this.scene.add(this.skyBox);
-    },
-    
-    onLoadTexture_img: function (texture)
-    {
-        uni_w_img = uni_img.image.width;
-        uni_h_img = uni_img.image.height;
-
-        house.skyBox.material.uniforms.w_img.value = uni_w_img;
-        house.skyBox.material.uniforms.h_img.value = uni_h_img;
-
-        //house.renderer.setSize(uni_w_img, uni_h_img);
-    },
-
-    onLoadTexture_kernel:function (kernel)
-    {
-        uni_R_kernel = (uni_kernel.image.width - 1) / 2;
-        uni_R_kernel *= config.scale_kernel;
-
-        house.skyBox.material.uniforms.refocus.value = uni_refocus_flag;
-        house.skyBox.material.uniforms.R_kernel.value = uni_R_kernel;
     },
 };
 
 // Animate the scene
 function animate() {
     requestAnimationFrame(animate);
-    render();
-    update();
+    if (texture_ready_flag)
+    {
+      render();
+      update();
+    }
 }
 
 // Update controls and stats
@@ -209,69 +195,29 @@ function update() {
 	//house.stats.update();
     house.controls.update( house.clock.getDelta() );
 
-    if (house.skyBox.material.uniforms.refocus.value != uni_refocus_flag)
+    if ( house.skyBox.material.uniforms.refocus.value != uni_refocus_flag )
     {
         house.skyBox.material.uniforms.refocus.value = uni_refocus_flag;
-        
-        if (uni_refocus_flag == 1)
+
+        if ( uni_refocus_flag == 1 )
+        {
             house.skyBox.material.uniforms.d_focal.value = uni_d_focal;
-        
-        house.skyBox.material.uniforms
+            update_flag = true;
+            uni_refocus_flag = 0;
+        }
+
+        house.skyBox.material.needsUpdate = true;
     }
-
-    //uni_d_focal = house.controls.focalDist;
-    //keyboard.update();
-    //if (keyboard.down('A'))
-    //{
-    //    uni_d_focal -= 0.05;
-    //    if (uni_d_focal < 0)
-    //    {
-    //        uni_d_focal += 1;
-    //    }
-    //    house.skyBox.material.uniforms.d_focal.value = uni_d_focal;
-    //    house.skyBox.material.needsUpdate = true;
-    //    refocus = 1;
-
-    //    console.log(uni_d_focal);
-    //}
-
-    //if (keyboard.down('D'))
-    //{
-    //    uni_d_focal += 0.05;
-    //    if (uni_d_focal > 1)
-    //    {
-    //        uni_d_focal -= 1;
-    //    }
-    //    house.skyBox.material.uniforms.d_focal.value = uni_d_focal;
-    //    house.skyBox.needsUpdate = true;
-    //    refocus = 1;
-
-    //    console.log(uni_d_focal);
-    //}
 }
 
 // Render the scene
 function render() {
-    if ( house.renderer )
+    if ( house.renderer && update_flag )
     {
         house.renderer.render( house.scene, house.camera );
-
-        uni_refocus_flag = 0;
-        //var imgData;
-        //var imgNode;
-        //try {
-        //    imgData = house.renderer.domElement.toDataURL(); 
-        //    console.log(imgData);
-        //    imgNode = document.getElementById( 'result' );
-        //    imgNode.src = imgData;
-			
-        //    //window.win = open(imgData);
-        //} catch(e) {
-        //    console.log("Browser does not support taking screenshot of 3d context");
-        //    return;
-
-        //uni_refocus_flag = 0;
-        //window.refocus = 0;
+        // preserve current result
+        house.container.children[0] = house.renderer.domElement;
+        update_flag = false;
     }
 }
 
@@ -281,25 +227,49 @@ function initializeLesson() {
     animate();
 }
 
-window.addEventListener("keypress", changeFocalDepth, false);
-
-function changeFocalDepth(e)
+window.addEventListener( "keydown", function ( e )
 {
-    // far
-    if (e.charCode == 119)
+    if ( e.keyCode == 83 )
     {
-        uni_d_focal -= config.rf_speed;
-        if ( uni_d_focal < 0 )
-            uni_d_focal += 1;
+        window.uni_refocus_flag = 1;
+        window.uni_d_focal += config.rf_speed;
+        if ( window.uni_d_focal > 1 )
+            window.uni_d_focal -= 1;
     }
-    
-    if (e.charCode == 115)
+
+    else if ( e.keyCode == 87 )
     {
-        uni_d_focal += config.rf_speed;
-        if ( uni_d_focal > 1 )
-            uni_d_focal -= 1;
+        window.uni_refocus_flag = 1;
+        window.uni_d_focal -= config.rf_speed;
+        if ( window.uni_d_focal < 0 )
+            window.uni_d_focal += 1;
     }
+}, false );
+
+function addClickEvent( event )
+{
+    // test get uv for current position
+    // mouse position
+    var raycaster = new THREE.Raycaster();
+    var mouse = new THREE.Vector2(event.clientX/window.innerWidth*2 + 1, event.clientY/window.innerHeight*2-1);
+    raycaster.setFromCamera(mouse, house.camera);
+    var uv = raycaster.intersectObjects(house.scene.children)[0].uv;
+    var index = Math.ceil((1-uv.y)*uni_h_img*uni_w_img + uv.x*uni_w_img);
+    uni_d_focal = depth_data.data[index]/255;
     uni_refocus_flag = 1;
+}
+
+function getImageData( image ) {
+
+    var canvas = document.createElement( 'canvas' );
+    canvas.width = image.width;
+    canvas.height = image.height;
+
+    var context = canvas.getContext( '2d' );
+    context.drawImage( image, 0, 0 );
+
+    return context.getImageData( 0, 0, image.width, image.height );
+
 }
 
 if (window.addEventListener)
